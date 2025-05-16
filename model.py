@@ -338,6 +338,7 @@ class MyModel(AIxBlockMLBase):
                                 stderr=sys.stderr,
                                 text=True,
                             )
+                            process.wait()
                         else:  # no gpu
                             command = (
                                 "venv/bin/accelerate launch --cpu {file_name} --training_args_json {json_file} --dataset_local {dataset_path} --channel_log {channel_log} --hf_model_id {hf_model_id} --push_to_hub {push_to_hub} --push_to_hub_token {push_to_hub_token} --model_id {model_id} --instruction_field {instruction_field} --input_field {input_field} --output_field {output_field}"
