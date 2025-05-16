@@ -543,69 +543,81 @@ class MyModel(AIxBlockMLBase):
             if not prompt or prompt == "":
                 prompt = text
 
-            from huggingface_hub import login 
-            hf_access_token = kwargs.get("hf_access_token", "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")
-            login(token = hf_access_token)
-            def smart_pipeline(model_id: str, token: str, local_dir="./data/checkpoint", task="text-generation"):
-                try:
-                    import os
-                    model_name = model_id.split("/")[-1]
-                    local_model_dir = os.path.join(local_dir, model_name)
+            from huggingface_hub import login
 
-                    # Kiểm tra xem model đã có local chưa
-                    if os.path.exists(local_model_dir) and os.path.exists(os.path.join(local_model_dir, "config.json")):
-                        print(f"✅ Loading model from local: {local_model_dir}")
-                        model_source = local_model_dir
-                    else:
+            hf_access_token = kwargs.get(
+                "hf_access_token", "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"
+            )
+            login(token=hf_access_token)
+
+            def smart_pipeline(
+                model_id: str,
+                token: str,
+                local_dir="./data/checkpoint",
+                task="text-generation",
+            ):
+                global pipe_prediction
+
+                if pipe_prediction == None:
+                    try:
+                        model_name = model_id.split("/")[-1]
+                        local_model_dir = os.path.join(local_dir, model_name)
+                        if os.path.exists(local_model_dir) and os.path.exists(
+                            os.path.join(local_model_dir, "config.json")
+                        ):
+                            print(f"✅ Loading model from local: {local_model_dir}")
+                            model_source = local_model_dir
+                        else:
+                            print(f"☁️ Loading model from HuggingFace Hub: {model_id}")
+                            model_source = model_id
+                    except:
                         print(f"☁️ Loading model from HuggingFace Hub: {model_id}")
                         model_source = model_id
-                except:
-                    print(f"☁️ Loading model from HuggingFace Hub: {model_id}")
-                    model_source = model_id
 
-                # Xác định dtype và device
-                if torch.cuda.is_available():
-                    if torch.cuda.is_bf16_supported():
-                        dtype = torch.bfloat16
+                    if torch.cuda.is_available():
+                        if torch.cuda.is_bf16_supported():
+                            dtype = torch.bfloat16
+                        else:
+                            dtype = torch.float16
+
+                        print("Using CUDA.")
+                        pipe_prediction = pipeline(
+                            task,
+                            model=model_source,
+                            torch_dtype=dtype,
+                            device_map="auto",
+                            token=token,
+                            max_new_tokens=256,
+                        )
                     else:
-                        dtype = torch.float16
+                        print("Using CPU.")
+                        pipe_prediction = pipeline(
+                            task,
+                            model=model_source,
+                            device_map="cpu",
+                            token=token,
+                            max_new_tokens=256,
+                        )
 
-                    print("Using CUDA.")
-                    pipe = pipeline(
-                        task,
-                        model=model_source,
-                        torch_dtype=dtype,
-                        device_map="auto",
-                        token=token,
-                        max_new_tokens=256
-                    )
-                else:
-                    print("Using CPU.")
-                    pipe = pipeline(
-                        task,
-                        model=model_source,
-                        device_map="cpu",
-                        token=token,
-                        max_new_tokens=256
-                    )
+            with torch.no_grad():
+                # Load the model
+                smart_pipeline(model_id, hf_access_token)
+                generated_text = qa_without_context(pipe_prediction, prompt)
 
-                return pipe
-
-            _model = smart_pipeline(model_id, hf_access_token)
-            generated_text = qa_without_context(_model, prompt)
-        
             print(generated_text)
-            predictions.append({
-                'result': [{
-                    'from_name': "generated_text",
-                    'to_name': "text_output",
-                    'type': 'textarea',
-                    'value': {
-                        'text': [generated_text]
-                    }
-                }],
-                'model_version': ""
-            })
+            predictions.append(
+                {
+                    "result": [
+                        {
+                            "from_name": "generated_text",
+                            "to_name": "text_output",
+                            "type": "textarea",
+                            "value": {"text": [generated_text]},
+                        }
+                    ],
+                    "model_version": "",
+                }
+            )
 
             return {"message": "predict completed successfully", "result": predictions}
         elif command.lower() == "prompt_sample":
