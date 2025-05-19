@@ -596,6 +596,7 @@ class MyModel(AIxBlockMLBase):
                 return pipe
 
             def unload_model():
+                global _model 
                 if _model is not None:
                     del _model
                     _model = None
