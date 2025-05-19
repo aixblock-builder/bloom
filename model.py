@@ -543,7 +543,10 @@ class MyModel(AIxBlockMLBase):
 
             if not prompt or prompt == "":
                 prompt = text
-
+            
+            global _model
+            global model_load_predict
+            
             from huggingface_hub import login 
             hf_access_token = kwargs.get("hf_access_token", "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")
             login(token = hf_access_token)
@@ -593,15 +596,12 @@ class MyModel(AIxBlockMLBase):
                 return pipe
 
             def unload_model():
-                global _model
                 if _model is not None:
                     del _model
                     _model = None
                     gc.collect()
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()
-
-            global model_load_predict
 
             if model_id != model_load_predict:
                 print(f"🔁 Switching model from {model_load_predict} ➜ {model_id}")
